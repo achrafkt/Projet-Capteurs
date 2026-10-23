@@ -1,0 +1,21 @@
+# Noyau
+numpy>=1.26
+pandas>=2.1
+scipy>=1.11
+statsmodels>=0.14
+scikit-learn>=1.4
+ruptures>=1.1.9
+pyod>=1.1
+matplotlib>=3.8
+
+# Notebooks
+jupyterlab>=4.0
+ipykernel>=6.29
+
+# Tests
+pytest>=8.0
+
+# Optionnels (hors noyau) : décommenter si utilisés
+# hmmlearn>=0.3
+# torch>=2.2
+# streamlit>=1.32
