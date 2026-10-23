@@ -59,7 +59,7 @@ jupyter lab                      # puis notebooks/01_eda_qualite.ipynb
 |---|---|---|
 | 0 | Structure, protocole d'évaluation | ✅ |
 | 1 | EDA et qualité (`01_eda_qualite`) | ✅ code, ⏳ à exécuter sur les données |
-| 2 | Nettoyage | — |
+| 2 | Nettoyage | — |✅ code et exécution
 | 3 | Segmentation des régimes | — |
 | 4 | Détection et filtre anomalie/bruit | — |
 | 5 | Signaux précurseurs | — |
