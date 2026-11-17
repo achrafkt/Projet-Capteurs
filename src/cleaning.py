@@ -21,10 +21,11 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-STATUS_COL = "machine_status"
-FROZEN_MIN = pd.Timedelta("24h")  # une séquence identique plus longue est « figée »
-FFILL_LIMIT = 5  # nombre maximal de minutes remplies par la dernière valeur connue
-FEATURE_MAX_NAN_FRAC = 0.20  # au-delà, le capteur n'est pas utilisé comme variable
+from src.config import FEATURE_MAX_NAN_FRAC, FFILL_LIMIT
+from src.config import FROZEN_MIN as _FROZEN_MIN
+from src.data_loading import STATUS_COL
+
+FROZEN_MIN = pd.Timedelta(_FROZEN_MIN)
 
 
 @dataclass

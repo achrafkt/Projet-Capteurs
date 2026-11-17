@@ -106,3 +106,6 @@ Un filtre utile réduit fortement les fausses alertes par jour pour une perte de
 | Date | Modification | Justification |
 |---|---|---|
 | 2026-10-23 | Version initiale | — |
+| 2026-11-17 | `sensor_50` exclu des variables, décision prise sur tout le jeu | Exclusion structurelle, pas une statistique apprise : le capteur cesse d'émettre le 2018-07-09 (100 % de NaN en août) et manquerait entièrement dans les cycles de test 6 et 7 |
+| 2026-11-17 | Régimes appris dans chaque pli (`RegimeModel().fit(X[train])`). Le « seuil par régime » de la couche de filtrage n'est plus le défaut : il passe en ablation (avec et sans, k = 2 et k = 3) | Phase 3 : le régime 1 (bloc `sensor_14`–`33` bas) couvre 73 à 100 % des fenêtres pré-panne des pannes 1, 2 et 5. Normaliser par régime effacerait ce signal |
+| 2026-11-17 | Interdiction de choisir des capteurs ou des variables à partir des cartes de chaleur de la phase 1 pour les évaluer ensuite sur les mêmes pannes | Ces cartes voient les 7 pannes : s'en servir pour choisir, puis évaluer en LOFO sur les mêmes pannes, serait une fuite de sélection. Tout choix de variables se fait dans le pli |
