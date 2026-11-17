@@ -121,3 +121,67 @@ def plot_failure_heatmaps(
     axes[-1, 0].set_xlabel("Heures relatives à la panne (t_f = 0)")
     fig.colorbar(image, ax=axes[:, 0], shrink=0.4, label="z-score robuste (borné)")
     return fig
+
+
+# --------------------------------------------------------------------- phase 3
+
+REGIME_COLORS = {-2: "#bdbdbd", -1: "#000000", 0: "#4c78a8", 1: "#e45756", 2: "#54a24b",
+                 3: "#b279a2", 4: "#f58518", 5: "#72b7b2"}
+REGIME_NAMES = {-2: "manquant", -1: "hors régime"}
+
+
+def plot_silhouette(scores: dict[int, float], chosen: int) -> plt.Figure:
+    fig, ax = plt.subplots(figsize=(6, 3.2))
+    ks = sorted(scores)
+    ax.plot(ks, [scores[k] for k in ks], marker="o", color="#4c78a8")
+    ax.axvline(chosen, color="grey", ls="--", lw=1)
+    ax.set_xlabel("nombre de régimes k")
+    ax.set_ylabel("silhouette")
+    ax.set_title(f"Choix de k (retenu : {chosen})")
+    ax.spines[["top", "right"]].set_visible(False)
+    return fig
+
+
+def plot_regime_profile(profile: pd.DataFrame, clip: float = 10.0) -> plt.Figure:
+    """Carte des z-scores robustes médians, capteur × régime."""
+    fig, ax = plt.subplots(figsize=(3 + 1.2 * profile.shape[1], 0.22 * len(profile) + 1.5))
+    im = ax.imshow(profile.to_numpy(), aspect="auto", cmap="RdBu_r", vmin=-clip, vmax=clip)
+    ax.set_yticks(range(len(profile)), profile.index, fontsize=7)
+    ax.set_xticks(range(profile.shape[1]), [f"régime {c}" for c in profile.columns])
+    fig.colorbar(im, ax=ax, label="z-score robuste médian (borné)")
+    ax.set_title("Profil des régimes")
+    return fig
+
+
+def plot_regime_timeline(
+    labels: pd.Series,
+    events: list[FailureEvent],
+    signals: pd.DataFrame | None = None,
+) -> plt.Figure:
+    """Bande des régimes dans le temps, pannes en rouge, signaux optionnels en dessous."""
+    n = 1 + (0 if signals is None else signals.shape[1])
+    fig, axes = plt.subplots(n, 1, figsize=(14, 1.2 + 1.3 * n), sharex=True,
+                             gridspec_kw={"height_ratios": [1] + [1.4] * (n - 1)})
+    axes = np.atleast_1d(axes)
+    ax = axes[0]
+    step = labels.index.to_series().diff().median()
+    runs = labels.ne(labels.shift()).cumsum()
+    seen = set()
+    for _, run in labels.groupby(runs):
+        r = int(run.iloc[0])
+        ax.axvspan(run.index[0], run.index[-1] + step, color=REGIME_COLORS.get(r, "#999"), lw=0,
+                   label=None if r in seen else REGIME_NAMES.get(r, f"régime {r}"))
+        seen.add(r)
+    handles, names = ax.get_legend_handles_labels()
+    order = np.argsort(names)
+    ax.legend([handles[i] for i in order], [names[i] for i in order],
+              loc="upper left", bbox_to_anchor=(1.0, 1.0), fontsize=8, frameon=False)
+    ax.set_yticks([])
+    ax.set_title("Régimes (confirmés) et pannes")
+    for i, col in enumerate([] if signals is None else signals.columns, start=1):
+        axes[i].plot(signals.index, signals[col], lw=0.6, color="#333")
+        axes[i].set_ylabel(col, fontsize=8)
+    for a in axes:
+        mark_events(a, events, window=None)
+        a.spines[["top", "right"]].set_visible(False)
+    return fig

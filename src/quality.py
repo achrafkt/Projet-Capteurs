@@ -73,10 +73,12 @@ def stationarity_tests(
     if len(x) < 30 or np.isclose(x.std(), 0):
         return out
 
-    out["adf_pvalue"] = adfuller(x.to_numpy(), autolag="AIC")[1]
     with warnings.catch_warnings():
-        # KPSS borne ses p-values à [0.01, 0.1] et prévient par un warning.
+        # KPSS borne ses p-values à [0.01, 0.1] et prévient par un warning ;
+        # statsmodels annonce aussi un changement de type de retour (FutureWarning).
         warnings.simplefilter("ignore", InterpolationWarning)
+        warnings.simplefilter("ignore", FutureWarning)
+        out["adf_pvalue"] = adfuller(x.to_numpy(), autolag="AIC")[1]
         out["kpss_pvalue"] = kpss(x.to_numpy(), regression="c", nlags="auto")[1]
 
     adf_stationary = out["adf_pvalue"] < alpha
@@ -96,6 +98,7 @@ def profile_sensors(
     df: pd.DataFrame,
     sensors: list[str],
     resample: str | None = STATIONARITY_RESAMPLE,
+    stationarity_mask: pd.Series | None = None,
 ) -> pd.DataFrame:
     """Profil de qualité, une ligne par capteur.
 
@@ -103,6 +106,10 @@ def profile_sensors(
     - ``mode_pct``        : part des mesures égales à la valeur la plus fréquente
     - ``zero_step_pct``   : part des pas consécutifs sans variation (capteur figé / quantifié)
     - ``longest_frozen``  : plus longue séquence de valeurs identiques (durée)
+
+    ``stationarity_mask`` (booléen, même index) restreint ADF/KPSS aux instants ``True``,
+    par exemple aux seules périodes ``NORMAL`` : sinon les arrêts (BROKEN, RECOVERING)
+    créent à eux seuls des ruptures de niveau.
     """
     step = df.index.to_series().diff().median()
     rows = []
@@ -126,7 +133,10 @@ def profile_sensors(
                 "zero_step_pct": 100 * (diffs == 0).sum() / n_steps if n_steps else np.nan,
                 "longest_frozen": run_len * step,
                 "longest_frozen_start": run_start,
-                **stationarity_tests(s, resample=resample),
+                **stationarity_tests(
+                    s if stationarity_mask is None else s.where(stationarity_mask),
+                    resample=resample,
+                ),
             }
         )
     return pd.DataFrame(rows).set_index("sensor")

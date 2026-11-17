@@ -36,8 +36,10 @@ notebooks/         orchestration et visualisation uniquement
 src/               toute la logique réutilisable
   config.py        chemins, paramètres du protocole, seuils de qualité
   data_loading.py  chargement Pump et C-MAPSS
-  events.py        pannes, fenêtres pré-panne, zones du protocole
+  events.py        pannes, fenêtres pré-panne, zones, cycles et plis LOFO
   quality.py       profil de qualité, capteurs morts ou suspects, ADF/KPSS
+  cleaning.py      nettoyage (capteurs morts, valeurs figées, trous courts)
+  regimes.py       segmentation des régimes (PCA + KMeans), transitions
   viz.py           figures
 reports/           protocole, figures, tables
 tests/             tests unitaires (pytest, données synthétiques)
@@ -58,9 +60,9 @@ jupyter lab                      # puis notebooks/01_eda_qualite.ipynb
 | Phase | Contenu | Statut |
 |---|---|---|
 | 0 | Structure, protocole d'évaluation | ✅ |
-| 1 | EDA et qualité (`01_eda_qualite`) | ✅ code, ⏳ à exécuter sur les données |
-| 2 | Nettoyage | — |✅ code et exécution
-| 3 | Segmentation des régimes | — |
+| 1 | EDA et qualité (`01_eda_qualite`) | ✅ code et exécution |
+| 2 | Nettoyage (`02_nettoyage`) | ✅ code et exécution |
+| 3 | Segmentation des régimes (`03_regimes`) + correctifs phases 1–2 | ✅ code et exécution |
 | 4 | Détection et filtre anomalie/bruit | — |
 | 5 | Signaux précurseurs | — |
 | 6 | Rapport et soutenance | — |

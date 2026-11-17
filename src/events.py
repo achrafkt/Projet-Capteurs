@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from src.config import PRE_FAILURE_WINDOW, STATUS_BROKEN, STATUS_NORMAL, STATUS_RECOVERING
+from src.config import LOFO_PURGE, PRE_FAILURE_WINDOW, STATUS_BROKEN, STATUS_NORMAL, STATUS_RECOVERING
 
 
 @dataclass(frozen=True)
@@ -118,3 +118,49 @@ def time_zones(
     censored = (status.index > status.index[-1] - window) & (status.index > last_failure)
     zones[censored & (zones == "normal")] = "censored"
     return zones
+
+
+def failure_cycles(index: pd.DatetimeIndex, events: list[FailureEvent]) -> pd.Series:
+    """Numéro de cycle du protocole (section 4) pour chaque instant.
+
+    Cycle k = ``]fin de remise en service k-1, fin de remise en service k]`` ; le premier
+    cycle commence au début des données. Le segment après la dernière remise en service
+    reçoit le numéro ``len(events) + 1`` : c'est le cycle sans panne, toujours à l'entraînement.
+    """
+    cycles = pd.Series(len(events) + 1, index=index, dtype="int64")
+    start = None
+    for e in events:
+        end = e.recovery_end or e.failure_time
+        sel = index <= end if start is None else (index > start) & (index <= end)
+        cycles[sel] = e.event_id
+        start = end
+    return cycles
+
+
+def lofo_folds(
+    zones: pd.Series,
+    cycles: pd.Series,
+    events: list[FailureEvent],
+    purge: str | pd.Timedelta = LOFO_PURGE,
+    chronological: bool = False,
+):
+    """Plis leave-one-failure-out du protocole : ``(k, masque_train, masque_test)``.
+
+    - test  : le cycle k entier (les zones disent ensuite quoi évaluer) ;
+    - train : zone ``normal`` des autres cycles, moins ``purge`` de part et d'autre du cycle k.
+    Avec ``chronological=True`` (contrôle de la section 4), seuls les cycles < k entraînent,
+    et le premier pli est sauté.
+    """
+    purge = pd.Timedelta(purge)
+    index = zones.index
+    for e in events:
+        k = e.event_id
+        test = cycles == k
+        start, end = index[test.to_numpy()].min(), index[test.to_numpy()].max()
+        near = (index >= start - purge) & (index <= end + purge)
+        train = (zones == "normal") & ~test & ~near
+        if chronological:
+            if k == 1:
+                continue
+            train &= cycles < k
+        yield k, train, test

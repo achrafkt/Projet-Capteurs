@@ -42,3 +42,37 @@ def test_time_zones(pump_csv):
     assert zones[events[0].failure_time - pd.Timedelta("1h")] == "pre_failure"
     assert zones.iloc[-1] == "censored"
     assert zones.iloc[0] == "normal"
+
+
+def test_failure_cycles(pump_csv):
+    from src.events import failure_cycles
+
+    df = load_pump(pump_csv)
+    events = extract_failure_events(df["machine_status"])
+    cycles = failure_cycles(df.index, events)
+    assert cycles.iloc[0] == 1
+    assert cycles[events[0].recovery_end] == 1
+    assert cycles[events[0].recovery_end + pd.Timedelta("1min")] == 2
+    assert cycles.iloc[-1] == 3  # segment sans panne après la dernière remise en service
+
+
+def test_lofo_folds_purge_et_zones(pump_csv):
+    from src.events import failure_cycles, lofo_folds
+
+    df = load_pump(pump_csv)
+    events = extract_failure_events(df["machine_status"])
+    zones = time_zones(df["machine_status"], events, "12h")
+    cycles = failure_cycles(df.index, events)
+    folds = list(lofo_folds(zones, cycles, events, purge="6h"))
+    assert [k for k, _, _ in folds] == [1, 2]
+    for k, train, test in folds:
+        assert not (train & test).any()
+        assert (zones[train] == "normal").all()
+        start = df.index[test.to_numpy()].min()
+        end = df.index[test.to_numpy()].max()
+        t = df.index[train.to_numpy()]
+        assert not ((t >= start - pd.Timedelta("6h")) & (t <= end + pd.Timedelta("6h"))).any()
+
+    chrono = list(lofo_folds(zones, cycles, events, purge="6h", chronological=True))
+    assert [k for k, _, _ in chrono] == [2]
+    assert (cycles[chrono[0][1]] < 2).all()
